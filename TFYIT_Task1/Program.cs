@@ -9,9 +9,11 @@ namespace TFYIT_Task1
     {
         static void Main(string[] args)
         {
-            string path = @"C:\Users\123\Desktop\KDA1.txt";
+            string path = @"C:\Users\123\Desktop\KNA1.txt";
             Automaton myAuto = new Automaton(path);
             myAuto.ShowInfo();
+            Console.WriteLine();
+            myAuto.ShowTable();
             string inLine;
             Console.Write("\nВведите входное слово: ");
             inLine = Console.ReadLine();

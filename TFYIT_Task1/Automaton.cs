@@ -90,15 +90,18 @@ namespace TFYIT_Task1
                             {
                                 line = file.ReadLine();
                                 string[] tempStates = line.Split(' ');
-                                foreach (string state in tempStates)
+                                if (type == 0)
                                 {
-                                    if (!states.ToList().Contains(state))
+                                    foreach (string state in tempStates)
                                     {
-                                        Console.ForegroundColor = ConsoleColor.Red;
-                                        Console.WriteLine($"Ошибка! Состояние '{state}', указанное в таблице переходов, не определено!");
-                                        Console.ResetColor();
-                                        emergencyStop = true;
-                                        break;
+                                        if (!states.ToList().Contains(state))
+                                        {
+                                            Console.ForegroundColor = ConsoleColor.Red;
+                                            Console.WriteLine($"Ошибка! Состояние '{state}', указанное в таблице переходов, не определено!");
+                                            Console.ResetColor();
+                                            emergencyStop = true;
+                                            break;
+                                        }
                                     }
                                 }
                                 transitions.Add(states[i], tempStates.ToList());
@@ -127,6 +130,7 @@ namespace TFYIT_Task1
                     }
                 }
             }
+            Console.WriteLine($"Автомат считан из файла {path}");
         }
         public Automaton(uint type, string[] states, string[] inputs, string[] finalStates, string initState, Dictionary<string, List<string>> transitions)
         {
@@ -193,6 +197,8 @@ namespace TFYIT_Task1
         {
             if (isInitiatedCorrectly)
             {
+                int maxLength = MaxLengthForTable();
+
                 Console.WriteLine("Таблица переходов автомата:");
 
                 for (int i = 0; i < states.Length + 1; i++)
@@ -202,7 +208,7 @@ namespace TFYIT_Task1
                         for (int j = 0; j < inputs.Length + 1; j++)
                         {
                             if (j == 0) Console.Write("\t");
-                            else Console.Write($"{inputs[j - 1]}\t");
+                            else Console.Write($"|{{0, {-maxLength - 1}}}|", inputs[j - 1]);
                         }
                     }
                     else // для остальных строк
@@ -211,9 +217,17 @@ namespace TFYIT_Task1
                         {
                             if (j == 0)
                             {
-                                Console.Write($"{states[i - 1]}:\t");
+                                if (states[i - 1] == initState)
+                                {
+                                    Console.Write($"->{states[i - 1]}:\t");
+                                }
+                                else if (finalStates.Contains(states[i - 1]))
+                                {
+                                    Console.Write($" *{states[i - 1]}:\t");
+                                }
+                                else Console.Write($"  {states[i - 1]}:\t");
                             }
-                            else Console.Write($"{transitions[states[i - 1]][j - 1]}\t");
+                            else Console.Write($"|{{0, {-maxLength - 1}}}|", transitions[states[i - 1]][j - 1]);
                         }
                     }
                     Console.WriteLine();
@@ -225,7 +239,24 @@ namespace TFYIT_Task1
                 Console.WriteLine("Операция 'ShowTable' не может быть выполнена: автомат не проинициализирован.");
             }
         }
+        private int MaxLengthForTable()
+        {
+            int maxLength = 0;
+            foreach (var item in transitions.Values)
+            {
+                foreach (string state in item)
+                {
+                    if (maxLength < state.Length) maxLength = state.Length;
+                }
+            }
+            return maxLength;
+        }
         public bool ProcessInputLine(string word)
+        {
+            if (type == 1) return ProcessKDA(word);
+            else return ProcessKNA(word);
+        }
+        private bool ProcessKDA(string word)
         {
             bool isOk = false;
             if (isInitiatedCorrectly)
@@ -234,6 +265,7 @@ namespace TFYIT_Task1
                 string currentState = initState;
                 List<string> inputsList = inputs.ToList();
 
+                Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.Write("Состояния имеют следующий порядок: ");
                 for (int i = 1; i <= states.Length; i++)
                 {
@@ -250,8 +282,9 @@ namespace TFYIT_Task1
                     else
                         Console.Write($"{i}-'{inputs[i - 1]}'.\n");
                 }
-
                 Console.WriteLine($"\nТекущее состояние: {currentState}");
+                Console.ResetColor();
+
                 foreach (char symbol in word)
                 {
                     if (inputs.Contains(symbol.ToString()))
@@ -284,6 +317,120 @@ namespace TFYIT_Task1
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
                         Console.WriteLine($"Состояние {currentState} не входит в число финальных состояний.");
+                        Console.ResetColor();
+                    }
+                }
+                return isOk;
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Операция 'ProcessInputLine' не может быть выполнена: автомат не проинициализирован.");
+                Console.ResetColor();
+                return false;
+            }
+        }
+        private bool ProcessKNA(string word)
+        {
+            bool isOk = false;
+            if (isInitiatedCorrectly)
+            {
+                bool EmergencyBreak = false;
+                List<string> inputsList = inputs.ToList();
+
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.Write("Состояния имеют следующий порядок: ");
+                for (int i = 1; i <= states.Length; i++)
+                {
+                    if (i != states.Length)
+                        Console.Write($"{i}-'{states[i - 1]}', ");
+                    else
+                        Console.Write($"{i}-'{states[i - 1]}'.\n");
+                }
+                Console.Write("Входные символы имеют следующий порядок: ");
+                for (int i = 1; i <= inputs.Length; i++)
+                {
+                    if (i != inputs.Length)
+                        Console.Write($"{i}-'{inputs[i - 1]}', ");
+                    else
+                        Console.Write($"{i}-'{inputs[i - 1]}'.\n");
+                }
+                Console.ResetColor();
+
+                List<string> reachableStates = new List<string>();
+                List<string> currentStates = [initState];
+
+                Console.WriteLine($"\nТекущее состояние: {initState}");
+
+                foreach (char symbol in word)
+                {
+                    if (inputs.Contains(symbol.ToString())) // если символ входит в алфавит
+                    {
+                        Console.WriteLine($"Считан символ '{symbol}'");
+                        //рассматриваем все состояния, в которых мы находимся на текущем шаге
+                        foreach (string item in currentStates)
+                        {
+                            string tempState = transitions[item][inputsList.IndexOf(symbol.ToString())];
+                            if (tempState.Contains("{")) // если мы переходим не в одно состояние
+                            {
+                                tempState = tempState.Trim(['{', '}']);
+                                foreach (string state in tempState.Split(',')) // сохраняем все достижимые состояния
+                                {
+                                    if (!reachableStates.Contains(state))
+                                        reachableStates.Add(state);
+                                }
+                            }
+                            else // если мы переходим в одно состояние
+                            {
+                                if (!reachableStates.Contains(tempState))
+                                    reachableStates.Add(tempState); // сохраняем это достижимое состояние
+                            }
+                        }
+
+                        
+                        currentStates = new List<string>(reachableStates);
+                        reachableStates.Clear();
+                        Console.Write(" - Текущее(ие) состояние(ия): ");
+                        foreach (string item in currentStates)
+                        {
+                            Console.Write($"'{item}', ");
+                        }
+                        Console.WriteLine();
+                    }
+                    // если символа нет в алфавите
+                    else
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine($"Ошибка! Считанный символ '{symbol}' не входит в алфавит!");
+                        Console.ResetColor();
+                        EmergencyBreak = true;
+                        break;
+                    }
+                }
+                if (!EmergencyBreak)
+                {
+                    // если хотя бы одно из текущих состояний входит в число конечных
+                    if (finalStates.ToList().Any(x => currentStates.Any(y => y == x)))
+                    {
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.Write("Одно из состояний ");
+                        foreach (string item in currentStates)
+                        {
+                            Console.Write($"'{item}', ");
+                        }
+                        Console.WriteLine("входит в число финальных состояний.");
+                        Console.ResetColor();
+                        isOk = true;
+                    }
+                    else
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.Write("Ни одно из состояний ");
+                        foreach (string item in currentStates)
+                        {
+                            Console.Write($"'{item}', ");
+                        }
+                        Console.WriteLine("не входит в число финальных состояний.");
                         Console.ResetColor();
                     }
                 }
