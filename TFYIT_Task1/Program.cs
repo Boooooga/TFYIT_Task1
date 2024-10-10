@@ -9,19 +9,22 @@ namespace TFYIT_Task1
     {
         static void Main(string[] args)
         {
-            string path = @"C:\Users\123\Desktop\NKA.txt";
+            string path = @"C:\Users\123\Documents\Универ\Теория формальных языков и трансляций\DKA.txt";
             Automaton myAuto = new Automaton(path);
             myAuto.ShowInfo();
             Console.WriteLine();
-            //myAuto.ShowTable();
-            //string inLine;
-            //Console.Write("\nВведите входное слово: ");
-            //inLine = Console.ReadLine();
-            //myAuto.ProcessInputLine(inLine);
+            myAuto.ShowTable();
+            string inLine;
+            Console.Write("\nВведите входное слово: ");
+            inLine = Console.ReadLine();
+            myAuto.ProcessInputLine(inLine);
 
-            Automaton newAuto = myAuto.KNAtoKDA();
-            newAuto.ShowInfo();
-            newAuto.ShowTable();
+            if (myAuto.type == 2) // для случая недетерминированного автомата
+            {
+                Automaton newAuto = myAuto.KNAtoKDA();
+                newAuto.ShowInfo();
+                newAuto.ShowTable();
+            }
         }
     }
 }

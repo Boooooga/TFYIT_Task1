@@ -10,7 +10,7 @@ namespace TFYIT_Task1
 {
     internal class Automaton
     {
-        uint type;
+        public uint type;
         private string[]? states;
         private string[]? inputs;
         private string[]? finalStates;
@@ -210,7 +210,7 @@ namespace TFYIT_Task1
                     {
                         for (int j = 0; j < inputs.Length + 1; j++)
                         {
-                            if (j == 0) Console.Write($"{{0, {maxLength - 1}}}\t", "");
+                            if (j == 0) Console.Write($" {{0, {-maxLength - 2}}}:\t", "");
                             else Console.Write($"|{{0, {-maxLength - 1}}}|", inputs[j - 1]);
                         }
                     }
@@ -220,7 +220,11 @@ namespace TFYIT_Task1
                         {
                             if (j == 0)
                             {
-                                if (states[i - 1] == initState)
+                                if (states[i - 1] == initState && finalStates.Contains(states[i - 1]))
+                                {
+                                    Console.Write($"->*{{0, {-maxLength}}}:\t", states[i - 1]);
+                                }
+                                else if (states[i - 1] == initState)
                                 {
                                     Console.Write($"->{{0, {-maxLength - 1}}}:\t", states[i - 1]);
                                 }
@@ -268,24 +272,24 @@ namespace TFYIT_Task1
                 string currentState = initState;
                 List<string> inputsList = inputs.ToList();
 
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.Write("Состояния имеют следующий порядок: ");
-                for (int i = 1; i <= states.Length; i++)
-                {
-                    if (i != states.Length)
-                        Console.Write($"{i}-'{states[i - 1]}', ");
-                    else
-                        Console.Write($"{i}-'{states[i - 1]}'.\n");
-                }
-                Console.Write("Входные символы имеют следующий порядок: ");
-                for (int i = 1; i <= inputs.Length; i++)
-                {
-                    if (i != inputs.Length)
-                        Console.Write($"{i}-'{inputs[i - 1]}', ");
-                    else
-                        Console.Write($"{i}-'{inputs[i - 1]}'.\n");
-                }
-                Console.ResetColor();
+                //Console.ForegroundColor = ConsoleColor.Yellow;
+                //Console.Write("Состояния имеют следующий порядок: ");
+                //for (int i = 1; i <= states.Length; i++)
+                //{
+                //    if (i != states.Length)
+                //        Console.Write($"{i}-'{states[i - 1]}', ");
+                //    else
+                //        Console.Write($"{i}-'{states[i - 1]}'.\n");
+                //}
+                //Console.Write("Входные символы имеют следующий порядок: ");
+                //for (int i = 1; i <= inputs.Length; i++)
+                //{
+                //    if (i != inputs.Length)
+                //        Console.Write($"{i}-'{inputs[i - 1]}', ");
+                //    else
+                //        Console.Write($"{i}-'{inputs[i - 1]}'.\n");
+                //}
+                //Console.ResetColor();
                 Console.WriteLine($"\nТекущее состояние: {currentState}");
 
                 foreach (char symbol in word)
@@ -341,24 +345,24 @@ namespace TFYIT_Task1
                 bool EmergencyBreak = false;
                 List<string> inputsList = inputs.ToList();
 
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.Write("Состояния имеют следующий порядок: ");
-                for (int i = 1; i <= states.Length; i++)
-                {
-                    if (i != states.Length)
-                        Console.Write($"{i}-'{states[i - 1]}', ");
-                    else
-                        Console.Write($"{i}-'{states[i - 1]}'.\n");
-                }
-                Console.Write("Входные символы имеют следующий порядок: ");
-                for (int i = 1; i <= inputs.Length; i++)
-                {
-                    if (i != inputs.Length)
-                        Console.Write($"{i}-'{inputs[i - 1]}', ");
-                    else
-                        Console.Write($"{i}-'{inputs[i - 1]}'.\n");
-                }
-                Console.ResetColor();
+                //Console.ForegroundColor = ConsoleColor.Yellow;
+                //Console.Write("Состояния имеют следующий порядок: ");
+                //for (int i = 1; i <= states.Length; i++)
+                //{
+                //    if (i != states.Length)
+                //        Console.Write($"{i}-'{states[i - 1]}', ");
+                //    else
+                //        Console.Write($"{i}-'{states[i - 1]}'.\n");
+                //}
+                //Console.Write("Входные символы имеют следующий порядок: ");
+                //for (int i = 1; i <= inputs.Length; i++)
+                //{
+                //    if (i != inputs.Length)
+                //        Console.Write($"{i}-'{inputs[i - 1]}', ");
+                //    else
+                //        Console.Write($"{i}-'{inputs[i - 1]}'.\n");
+                //}
+                //Console.ResetColor();
 
                 List<string> reachableStates = new List<string>();
                 List<string> currentStates = [initState];
@@ -475,14 +479,40 @@ namespace TFYIT_Task1
                 Console.ResetColor();
 
                 List<string> reachableStates = new List<string>();
+                List<string> eps_shortcut = new List<string>();
                 List<string> currentStates = [initState];
 
                 Console.WriteLine($"\nТекущее состояние: {initState}");
 
                 foreach (char symbol in word)
                 {
-                    if (inputs.Contains(symbol.ToString()) || symbol == 'E') // если символ входит в алфавит
-                                                                            // или является эпсилон-переходом "E"
+                    // обработка эпсилон-переходов, поиск замыканий
+                    if (currentStates.Count == 1) // если текущее состояние однозначно
+                    {
+                        if (transitions[currentStates[0]][inputs.Length] != "~") // если из него есть эпс-переходы
+                        {
+                            //currentStates.Add(transitions[currentStates[0]][inputs.Length]);
+                            eps_shortcut.Add(transitions[currentStates[0]][inputs.Length]);
+                            Console.WriteLine($"Был осуществлён эпс-переход из {currentStates[0]} в" +
+                                $" {transitions[currentStates[0]][inputs.Length]}");
+                        }
+                    }
+                    else
+                    {
+                        foreach (string item in currentStates) // если текущее состояние неоднозначно
+                        {
+                            if (transitions[item][inputs.Length] != "~")
+                            {
+                                //currentStates.Add(transitions[item][inputs.Length]);
+                                eps_shortcut.Add(transitions[item][inputs.Length]);
+                                Console.WriteLine($"Был осуществлён эпс-переход из {item} в" +
+                                $" {transitions[item][inputs.Length]}");
+                            }
+                        }
+                    }
+
+
+                    if (inputs.Contains(symbol.ToString())) // если символ входит в алфавит
                     {
                         Console.WriteLine($"Считан символ '{symbol}'");
                         //рассматриваем все состояния, в которых мы находимся на текущем шаге
@@ -565,7 +595,7 @@ namespace TFYIT_Task1
         public Automaton KNAtoKDA()
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("Выполняется преобразование НКА к ДКА:\n");
+            Console.WriteLine("\nВыполняется преобразование НКА к ДКА:\n");
             Console.ResetColor();
 
             List<string> newStates = new List<string>(); // список новых состояний
