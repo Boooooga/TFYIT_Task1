@@ -14,6 +14,9 @@ namespace TFYIT_Task1
             myAuto.ShowInfo();
             Console.WriteLine();
             myAuto.ShowTable();
+
+            //myAuto.GetAllClosures();
+
             string inLine;
             Console.Write("\nВведите входное слово: ");
             inLine = Console.ReadLine();
@@ -21,7 +24,14 @@ namespace TFYIT_Task1
 
             if (myAuto.type == 2) // для случая недетерминированного автомата
             {
-                Automaton newAuto = myAuto.KNAtoKDA();
+                Automaton newAuto = myAuto.knaToKda();
+                newAuto.ShowInfo();
+                newAuto.ShowTable();
+            }
+
+            if (myAuto.type == 3)
+            {
+                Automaton newAuto = myAuto.knaEpsToKna();
                 newAuto.ShowInfo();
                 newAuto.ShowTable();
             }

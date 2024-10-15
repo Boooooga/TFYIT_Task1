@@ -446,7 +446,7 @@ namespace TFYIT_Task1
                 Console.ResetColor();
 
                 List<string> reachableStates = new List<string>();
-                List<string> eps_shortcut = new List<string>();
+                List<string> eps_closure = new List<string>();
                 List<string> currentStates = [initState];
 
                 Console.WriteLine($"\nТекущее состояние: {initState}");
@@ -501,11 +501,11 @@ namespace TFYIT_Task1
                             if (transitions[item][inputs.Length - 1] != "~")
                             {
                                 // добавляем текущее состояние в замыкание
-                                eps_shortcut.Add(item);
+                                eps_closure.Add(item);
                                 // и смежные с ним
                                 toAdd = transitions[item][inputs.Length - 1];
-                                if (!eps_shortcut.Contains(toAdd))
-                                    eps_shortcut.Add(toAdd);
+                                if (!eps_closure.Contains(toAdd))
+                                    eps_closure.Add(toAdd);
                                 else
                                 {
                                     eps_cycle = true; // если обнаружен цикл по эпсилон-переходам
@@ -536,10 +536,10 @@ namespace TFYIT_Task1
                         {
                             Console.ForegroundColor = ConsoleColor.Red;
                             Console.WriteLine("Обнаружен цикл по эпсилон-переходам. Программа будет остановлена.");
-                            eps_shortcut = eps_shortcut.Distinct().ToList();
-                            for (int j = 0; j < eps_shortcut.Count; j++)
+                            eps_closure = eps_closure.Distinct().ToList();
+                            for (int j = 0; j < eps_closure.Count; j++)
                             {
-                                Console.Write($"{eps_shortcut[j]} -> ");
+                                Console.Write($"{eps_closure[j]} -> ");
                             }
                             Console.WriteLine("...");
                             Console.ResetColor();
@@ -548,7 +548,7 @@ namespace TFYIT_Task1
 
                         bool epsAdded = false;
                         // к текущим состояниям добавляем состояния из эпсилон-замыкания
-                        foreach (string item in eps_shortcut)
+                        foreach (string item in eps_closure)
                         {
                             if (!item.Contains('{')) // если состояние однозначное
                             {
@@ -632,7 +632,7 @@ namespace TFYIT_Task1
                 return false;
             }
         }
-        public Automaton KNAtoKDA()
+        public Automaton knaToKda()
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("\nВыполняется преобразование НКА к ДКА:\n");
@@ -767,6 +767,151 @@ namespace TFYIT_Task1
             //}
 
             return new Automaton(1, newStates.ToArray(), inputs, newFinalStates.ToArray(), initState, newTransitions);
+        }
+        public Automaton knaEpsToKna()
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("\nВыполняется преобразование НКА с эпсилон-переходами к 'обычному' НКА:\n");
+            Console.ResetColor();
+
+            List<string> newInputs = new List<string>(inputs);
+            newInputs.RemoveAt(inputs.Length - 1);
+            List<string> newStates = new List<string>(); // список новых состояний
+            List<string> newFinalStates = new List<string>(); // список новых финальных состояний
+            Dictionary<string, List<string>> newTransitions = new Dictionary<string, List<string>>();
+            Dictionary<string, List<string>> closures = GetAllClosures();
+
+            string currentState = initState;
+
+            int i = 0;
+            while (i < states.Count())
+            {
+                string state = states[i];
+                int amountOfInputs = inputs.Count() - 1; // минус один, чтобы исключить эпсилон
+                string[] tempForEachInput = new string[amountOfInputs];
+                // если из текущего состояния нет эпсилон-переходов, то оставляем всё как есть
+                if (transitions[state][inputs.Count() - 1] == "~")
+                {
+                    newStates.Add(state);
+                    transitions[state].RemoveAt(amountOfInputs);
+                    newTransitions.Add(state, transitions[state]);
+                    if (finalStates.Contains(state))
+                    {
+                        newFinalStates.Add(state);
+                    }
+                }
+                else // если из текущего состояния есть эпсилон-переходы
+                {
+                    newStates.Add(state);
+
+
+                    List<string> tempTransitions = new List<string>();
+
+                    foreach (string item in closures[state]) // проходимся по замыканию для этого состояния
+                    {
+                        for (int j = 0; j < amountOfInputs; j++)
+                        {
+                            if (transitions[item][j] != "~") // если для элемента замыкания существует переход
+                            {
+                                tempForEachInput[j] += (transitions[item][j] + ",");
+                            }
+                        }
+                        if (finalStates.Contains(item))
+                        {
+                            newFinalStates.Add(state);
+                        }
+                    }
+
+                    // заполняем таблицу переходов полученными значениями
+                    foreach (string item in tempForEachInput)
+                    {
+                        if (item == null) // если пусто
+                        {
+                            tempTransitions.Add("~");
+                        }
+                        else
+                        {
+                            string[] tempStates = item.Trim(',').Split(',');
+                            if (tempStates.Length == 1) // если имеем однозначное состояние
+                            {
+                                tempTransitions.Add(tempStates[0]);
+                            }
+                            else // если имеем неоднозначное состояние
+                            {
+                                string result = "{";
+                                for (int k = 0; k < tempStates.Length; k++)
+                                {
+                                    if (k != tempStates.Length - 1)
+                                    {
+                                        result += (tempStates[k] + ",");
+                                    }
+                                    else
+                                        result += tempStates[k];
+                                }
+                                result += "}";
+                                tempTransitions.Add(result);
+                            }
+                        }
+                    }
+                    newTransitions.Add(state, tempTransitions);
+                }
+                i++;
+            }
+            return new Automaton(2, newStates.ToArray(), newInputs.ToArray(), newFinalStates.ToArray(), initState, newTransitions);
+        }
+        public Dictionary<string, List<string>> GetAllClosures()
+        {
+            if (type == 3)
+            {
+                List<string> eps_closure = new List<string>();
+                List<string> statesInProcess = new List<string>();
+                Dictionary<string, List<string>> result = new Dictionary<string, List<string>>();
+                statesInProcess.Add(initState);
+
+
+                foreach (string state in transitions.Keys)
+                {
+                    int i = 0;
+                    statesInProcess.Add(state);
+                    eps_closure.Clear();
+                    while (i < statesInProcess.Count)
+                    {
+                        string toAdd = "";
+                        string item = statesInProcess[i];
+                        if (transitions[item][inputs.Length - 1] != "~")
+                        {
+                            // добавляем текущее состояние в замыкание
+                            eps_closure.Add(item);
+                            // и смежные с ним
+                            toAdd = transitions[item][inputs.Length - 1];
+                            if (!eps_closure.Contains(toAdd))
+                                eps_closure.Add(toAdd);
+                        }
+                        if (toAdd != "") // если добавляемое состояние не пустое
+                        {
+                            if (!toAdd.Contains('{')) // если состояние однозначное
+                            {
+                                if (!statesInProcess.Contains(toAdd))
+                                    statesInProcess.Add(toAdd);
+                            }
+                            else // если состояние неоднозначное
+                            {
+                                string tempState = toAdd.Trim(['{', '}']);
+                                foreach (string elem in tempState.Split(','))
+                                {
+                                    if (!statesInProcess.Contains(elem))
+                                        statesInProcess.Add(elem);
+                                }
+                            }
+                        }
+                        i++;
+                    }
+                    result.Add(state, new List<string>(statesInProcess.Distinct()));
+                    statesInProcess.Clear();
+                }
+                return result;
+            }
+            return null;
         }
     }
 }
