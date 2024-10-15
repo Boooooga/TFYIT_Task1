@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.NetworkInformation;
+using System.Reflection.Metadata.Ecma335;
 using System.Runtime.CompilerServices;
+using System.Security.AccessControl;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -261,7 +263,8 @@ namespace TFYIT_Task1
         public bool ProcessInputLine(string word)
         {
             if (type == 1) return ProcessKDA(word);
-            else return ProcessKNA(word);
+            else if (type == 2) return ProcessKNA(word);
+            else return ProcessKNA_E(word);
         }
         private bool ProcessKDA(string word)
         {
@@ -272,24 +275,6 @@ namespace TFYIT_Task1
                 string currentState = initState;
                 List<string> inputsList = inputs.ToList();
 
-                //Console.ForegroundColor = ConsoleColor.Yellow;
-                //Console.Write("Состояния имеют следующий порядок: ");
-                //for (int i = 1; i <= states.Length; i++)
-                //{
-                //    if (i != states.Length)
-                //        Console.Write($"{i}-'{states[i - 1]}', ");
-                //    else
-                //        Console.Write($"{i}-'{states[i - 1]}'.\n");
-                //}
-                //Console.Write("Входные символы имеют следующий порядок: ");
-                //for (int i = 1; i <= inputs.Length; i++)
-                //{
-                //    if (i != inputs.Length)
-                //        Console.Write($"{i}-'{inputs[i - 1]}', ");
-                //    else
-                //        Console.Write($"{i}-'{inputs[i - 1]}'.\n");
-                //}
-                //Console.ResetColor();
                 Console.WriteLine($"\nТекущее состояние: {currentState}");
 
                 foreach (char symbol in word)
@@ -344,26 +329,6 @@ namespace TFYIT_Task1
             {
                 bool EmergencyBreak = false;
                 List<string> inputsList = inputs.ToList();
-
-                //Console.ForegroundColor = ConsoleColor.Yellow;
-                //Console.Write("Состояния имеют следующий порядок: ");
-                //for (int i = 1; i <= states.Length; i++)
-                //{
-                //    if (i != states.Length)
-                //        Console.Write($"{i}-'{states[i - 1]}', ");
-                //    else
-                //        Console.Write($"{i}-'{states[i - 1]}'.\n");
-                //}
-                //Console.Write("Входные символы имеют следующий порядок: ");
-                //for (int i = 1; i <= inputs.Length; i++)
-                //{
-                //    if (i != inputs.Length)
-                //        Console.Write($"{i}-'{inputs[i - 1]}', ");
-                //    else
-                //        Console.Write($"{i}-'{inputs[i - 1]}'.\n");
-                //}
-                //Console.ResetColor();
-
                 List<string> reachableStates = new List<string>();
                 List<string> currentStates = [initState];
 
@@ -454,6 +419,8 @@ namespace TFYIT_Task1
         private bool ProcessKNA_E(string word)
         {
             bool isOk = false;
+            bool deadEnd = false;
+            bool eps_cycle = false;
             if (isInitiatedCorrectly)
             {
                 bool EmergencyBreak = false;
@@ -486,32 +453,6 @@ namespace TFYIT_Task1
 
                 foreach (char symbol in word)
                 {
-                    // обработка эпсилон-переходов, поиск замыканий
-                    if (currentStates.Count == 1) // если текущее состояние однозначно
-                    {
-                        if (transitions[currentStates[0]][inputs.Length] != "~") // если из него есть эпс-переходы
-                        {
-                            //currentStates.Add(transitions[currentStates[0]][inputs.Length]);
-                            eps_shortcut.Add(transitions[currentStates[0]][inputs.Length]);
-                            Console.WriteLine($"Был осуществлён эпс-переход из {currentStates[0]} в" +
-                                $" {transitions[currentStates[0]][inputs.Length]}");
-                        }
-                    }
-                    else
-                    {
-                        foreach (string item in currentStates) // если текущее состояние неоднозначно
-                        {
-                            if (transitions[item][inputs.Length] != "~")
-                            {
-                                //currentStates.Add(transitions[item][inputs.Length]);
-                                eps_shortcut.Add(transitions[item][inputs.Length]);
-                                Console.WriteLine($"Был осуществлён эпс-переход из {item} в" +
-                                $" {transitions[item][inputs.Length]}");
-                            }
-                        }
-                    }
-
-
                     if (inputs.Contains(symbol.ToString())) // если символ входит в алфавит
                     {
                         Console.WriteLine($"Считан символ '{symbol}'");
@@ -535,10 +476,103 @@ namespace TFYIT_Task1
                             }
                         }
 
-
+                        // обновляем список текущих состояний
+                        if (reachableStates.Count != 1)
+                            reachableStates.Remove("~");
                         currentStates = new List<string>(reachableStates);
-                        reachableStates.Clear();
+                        reachableStates.Clear();  
+
+                        // если текущее состояние - пустое множество
+                        if (currentStates.Count == 1 && currentStates[0] == "~")
+                        {
+                            deadEnd = true;
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine("Из текущего состояния недостижимы другие. Тупик.");
+                            Console.ResetColor();
+                            break;
+                        }
+
+                        // обработка эпсилон-переходов, поиск замыканий
+                        int i = 0;
+                        while (i < currentStates.Count)
+                        {
+                            string toAdd = "";
+                            string item = currentStates[i];
+                            if (transitions[item][inputs.Length - 1] != "~")
+                            {
+                                // добавляем текущее состояние в замыкание
+                                eps_shortcut.Add(item);
+                                // и смежные с ним
+                                toAdd = transitions[item][inputs.Length - 1];
+                                if (!eps_shortcut.Contains(toAdd))
+                                    eps_shortcut.Add(toAdd);
+                                else
+                                {
+                                    eps_cycle = true; // если обнаружен цикл по эпсилон-переходам
+                                    break;
+                                }
+                            }
+                            if (toAdd != "") // если добавляемое состояние не пустое
+                            {
+                                if (!toAdd.Contains('{')) // если состояние однозначное
+                                {
+                                    if (!currentStates.Contains(toAdd))
+                                        currentStates.Add(toAdd);
+                                }
+                                else // если состояние неоднозначное
+                                {
+                                    string tempState = toAdd.Trim(['{', '}']);
+                                    foreach (string state in tempState.Split(','))
+                                    {
+                                        if (!currentStates.Contains(state))
+                                            currentStates.Add(state);
+                                    }
+                                }
+                            }
+                            i++;
+                        }
+
+                        if (eps_cycle)
+                        {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine("Обнаружен цикл по эпсилон-переходам. Программа будет остановлена.");
+                            eps_shortcut = eps_shortcut.Distinct().ToList();
+                            for (int j = 0; j < eps_shortcut.Count; j++)
+                            {
+                                Console.Write($"{eps_shortcut[j]} -> ");
+                            }
+                            Console.WriteLine("...");
+                            Console.ResetColor();
+                            break;
+                        }
+
+                        bool epsAdded = false;
+                        // к текущим состояниям добавляем состояния из эпсилон-замыкания
+                        foreach (string item in eps_shortcut)
+                        {
+                            if (!item.Contains('{')) // если состояние однозначное
+                            {
+                                if (!currentStates.Contains(item))
+                                    currentStates.Add(item);
+                                epsAdded = true;
+                            }
+                            else // если состояние неоднозначное
+                            {
+                                string tempState = item.Trim(['{', '}']);
+                                foreach (string state in tempState.Split(',')) 
+                                {
+                                    if (!currentStates.Contains(state))
+                                        currentStates.Add(state);
+                                }
+                                epsAdded = true;
+                            }
+                        }
+
+                        if (epsAdded)
+                            Console.WriteLine("Был осуществлён эпсилон-переход");
+
                         Console.Write(" - Текущее(ие) состояние(ия): ");
+                        currentStates.Sort();
                         foreach (string item in currentStates)
                         {
                             Console.Write($"'{item}', ");
@@ -555,9 +589,9 @@ namespace TFYIT_Task1
                         break;
                     }
                 }
-                if (!EmergencyBreak)
+                if (!EmergencyBreak && !deadEnd && !eps_cycle) // если чтение завершилось без ошибок и мы не в тупике
                 {
-                    // если хотя бы одно из текущих состояний входит в число конечных
+                    // если хотя бы одно из текущих состояний входит в число конечных, сообщаем об этом
                     if (finalStates.ToList().Any(x => currentStates.Any(y => y == x)))
                     {
                         Console.ForegroundColor = ConsoleColor.Green;
@@ -581,6 +615,12 @@ namespace TFYIT_Task1
                         Console.WriteLine("не входит в число финальных состояний.");
                         Console.ResetColor();
                     }
+                }
+                else if (!EmergencyBreak && deadEnd) // если попали в тупик
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("Чтение строки невозможно продолжить");
+                    Console.ResetColor();
                 }
                 return isOk;
             }

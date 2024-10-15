@@ -9,7 +9,7 @@ namespace TFYIT_Task1
     {
         static void Main(string[] args)
         {
-            string path = @"C:\Users\123\Documents\Универ\Теория формальных языков и трансляций\DKA.txt";
+            string path = @"C:\Users\123\Documents\Универ\Теория формальных языков и трансляций\NKA-E.txt";
             Automaton myAuto = new Automaton(path);
             myAuto.ShowInfo();
             Console.WriteLine();
