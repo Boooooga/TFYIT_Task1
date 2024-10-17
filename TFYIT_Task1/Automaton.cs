@@ -213,7 +213,7 @@ namespace TFYIT_Task1
                         for (int j = 0; j < inputs.Length + 1; j++)
                         {
                             if (j == 0) Console.Write($" {{0, {-maxLength - 2}}}:\t", "");
-                            else Console.Write($"|{{0, {-maxLength - 1}}}|", inputs[j - 1]);
+                            else Console.Write($"|{{0, {-maxLength - 1}}}", inputs[j - 1]);
                         }
                     }
                     else // для остальных строк
@@ -236,7 +236,7 @@ namespace TFYIT_Task1
                                 }
                                 else Console.Write($"  {{0, {-maxLength - 1}}}:\t", states[i - 1]);
                             }
-                            else Console.Write($"|{{0, {-maxLength - 1}}}|", transitions[states[i - 1]][j - 1]);
+                            else Console.Write($"|{{0, {-maxLength - 1}}}", transitions[states[i - 1]][j - 1]);
                         }
                     }
                     Console.WriteLine();
@@ -426,36 +426,21 @@ namespace TFYIT_Task1
                 bool EmergencyBreak = false;
                 List<string> inputsList = inputs.ToList();
 
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.Write("Состояния имеют следующий порядок: ");
-                for (int i = 1; i <= states.Length; i++)
-                {
-                    if (i != states.Length)
-                        Console.Write($"{i}-'{states[i - 1]}', ");
-                    else
-                        Console.Write($"{i}-'{states[i - 1]}'.\n");
-                }
-                Console.Write("Входные символы имеют следующий порядок: ");
-                for (int i = 1; i <= inputs.Length; i++)
-                {
-                    if (i != inputs.Length)
-                        Console.Write($"{i}-'{inputs[i - 1]}', ");
-                    else
-                        Console.Write($"{i}-'{inputs[i - 1]}'.\n");
-                }
-                Console.ResetColor();
-
                 List<string> reachableStates = new List<string>();
                 List<string> eps_closure = new List<string>();
                 List<string> currentStates = [initState];
+                int tick = 0;
+
+                Dictionary<string, List<string>> allClosures = GetAllClosures();
 
                 Console.WriteLine($"\nТекущее состояние: {initState}");
 
                 foreach (char symbol in word)
                 {
+                    tick++;
                     if (inputs.Contains(symbol.ToString())) // если символ входит в алфавит
                     {
-                        Console.WriteLine($"Считан символ '{symbol}'");
+                        Console.WriteLine($"\nТакт №{tick}. Считан символ '{symbol}'");
                         //рассматриваем все состояния, в которых мы находимся на текущем шаге
                         foreach (string item in currentStates)
                         {
@@ -480,14 +465,24 @@ namespace TFYIT_Task1
                         if (reachableStates.Count != 1)
                             reachableStates.Remove("~");
                         currentStates = new List<string>(reachableStates);
-                        reachableStates.Clear();  
+                        reachableStates.Clear();
+
+                        Console.Write(" - Текущее(ие) состояние(ия): ");
+                        currentStates.Sort();
+                        foreach (string item in currentStates)
+                        {
+                            Console.Write($"'{item}', ");
+                        }
+                        Console.WriteLine();
+
+                        List<string> prevCurrent = new List<string>(currentStates);
 
                         // если текущее состояние - пустое множество
                         if (currentStates.Count == 1 && currentStates[0] == "~")
                         {
                             deadEnd = true;
                             Console.ForegroundColor = ConsoleColor.Red;
-                            Console.WriteLine("Из текущего состояния недостижимы другие. Тупик.");
+                            Console.WriteLine("Из текущего состояния отсутствуют переходы в другие состояния.");
                             Console.ResetColor();
                             break;
                         }
@@ -562,22 +557,28 @@ namespace TFYIT_Task1
                                 foreach (string state in tempState.Split(',')) 
                                 {
                                     if (!currentStates.Contains(state))
+                                    {
                                         currentStates.Add(state);
+                                    }
                                 }
                                 epsAdded = true;
                             }
                         }
 
                         if (epsAdded)
-                            Console.WriteLine("Был осуществлён эпсилон-переход");
-
-                        Console.Write(" - Текущее(ие) состояние(ия): ");
-                        currentStates.Sort();
-                        foreach (string item in currentStates)
                         {
-                            Console.Write($"'{item}', ");
+                            foreach (string item in prevCurrent)
+                            {
+                                Console.Write($"Состояние {item} образует следующее замыкание: ");
+                                foreach (string state in allClosures[item])
+                                {
+                                    Console.Write($"{state}, ");
+                                }
+                                Console.WriteLine();                            
+                            }
                         }
-                        Console.WriteLine();
+
+                        currentStates = new List<string>(prevCurrent);
                     }
                     // если символа нет в алфавите
                     else
@@ -595,7 +596,7 @@ namespace TFYIT_Task1
                     if (finalStates.ToList().Any(x => currentStates.Any(y => y == x)))
                     {
                         Console.ForegroundColor = ConsoleColor.Green;
-                        Console.Write("Одно из состояний ");
+                        Console.Write("Одно из достигнутых состояний ");
                         foreach (string item in currentStates)
                         {
                             Console.Write($"'{item}', ");

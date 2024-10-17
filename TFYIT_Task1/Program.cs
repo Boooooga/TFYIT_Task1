@@ -15,8 +15,6 @@ namespace TFYIT_Task1
             Console.WriteLine();
             myAuto.ShowTable();
 
-            //myAuto.GetAllClosures();
-
             string inLine;
             Console.Write("\nВведите входное слово: ");
             inLine = Console.ReadLine();
