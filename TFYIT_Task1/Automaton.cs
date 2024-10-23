@@ -282,7 +282,18 @@ namespace TFYIT_Task1
                     if (inputs.Contains(symbol.ToString()))
                     {
                         Console.WriteLine($"Считан символ '{symbol}'");
+                        string prevState = currentState;
                         currentState = transitions[currentState][inputsList.IndexOf(symbol.ToString())];
+                        // Обработка неопределённого состояния
+                        if (currentState == "~")
+                        {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine("Запрашиваемое входным символом состояние не определено.\n" +
+                                $"Из состояния {prevState} нет перехода по символу {symbol}");
+                            Console.ResetColor();
+                            EmergencyBreak = true;
+                            break;
+                        }
                         Console.WriteLine($" - Текущее состояние теперь {currentState}");
                     }
                     else
@@ -339,6 +350,7 @@ namespace TFYIT_Task1
                     if (inputs.Contains(symbol.ToString())) // если символ входит в алфавит
                     {
                         Console.WriteLine($"Считан символ '{symbol}'");
+
                         //рассматриваем все состояния, в которых мы находимся на текущем шаге
                         foreach (string item in currentStates)
                         {
@@ -346,20 +358,39 @@ namespace TFYIT_Task1
                             if (tempState.Contains("{")) // если мы переходим не в одно состояние
                             {
                                 tempState = tempState.Trim(['{', '}']);
+
                                 foreach (string state in tempState.Split(',')) // сохраняем все достижимые состояния
                                 {
-                                    if (!reachableStates.Contains(state))
+                                    if (!reachableStates.Contains(state) && state != "~")
                                         reachableStates.Add(state);
                                 }
                             }
                             else // если мы переходим в одно состояние
                             {
-                                if (!reachableStates.Contains(tempState))
+                                if (tempState == "~" && currentStates.Count == 1)
+                                {
+                                    Console.ForegroundColor = ConsoleColor.Red;
+                                    Console.WriteLine("Запрашиваемое входным символом состояние не определено.\n" +
+                                        $"Из состояния {currentStates[0]} нет перехода по символу {symbol}");
+                                    Console.ResetColor();
+                                    EmergencyBreak = true;
+                                    return false;
+                                }
+                                if (!reachableStates.Contains(tempState) && tempState != "~")
                                     reachableStates.Add(tempState); // сохраняем это достижимое состояние
                             }
                         }
 
-                        
+                        if (reachableStates.Count == 0)
+                        {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine("Запрашиваемое входным символом состояние не определено.\n" +
+                                $"Из состояний нет перехода по символу {symbol}");
+                            Console.ResetColor();
+                            EmergencyBreak = true;
+                            return false;
+                        }
+
                         currentStates = new List<string>(reachableStates);
                         reachableStates.Clear();
                         Console.Write(" - Текущее(ие) состояние(ия): ");
@@ -578,7 +609,7 @@ namespace TFYIT_Task1
                             }
                         }
 
-                        currentStates = new List<string>(prevCurrent);
+                        //currentStates = new List<string>(prevCurrent);
                     }
                     // если символа нет в алфавите
                     else
@@ -650,6 +681,13 @@ namespace TFYIT_Task1
             int i = 0;
             while (run)
             {
+                //if (currentState.Trim(['{', '}']).Split(',').ToList().All(x => x == "~"))
+                //{
+                //    //Console.WriteLine("Невозможно преобразовать автомат полностью. Получившийся вариант:");
+                //    newStates.Remove("~");
+                //    i++;
+                //}
+
                 if (!newStates[i].Contains("{")) // если текущее состояние однозначно
                 {
                     foreach (string item in transitions[currentState]) // рассматриваем все смежные состояния
@@ -678,7 +716,7 @@ namespace TFYIT_Task1
                 else // если текущее состояние не однозначно
                 {
                     List<string> allReachableStates = new List<string>(); // временный список для всех состояний,
-                                                                         // достижимых из текущго неоднозначного
+                                                                         // достижимых из текущего неоднозначного
 
                     string tempStates = currentState.Trim(['{', '}']); // разделяем текущее состояние на однозначные
                     List<HashSet<string>> reachableFromInputs = new List<HashSet<string>>(inputs.Length);
@@ -710,14 +748,17 @@ namespace TFYIT_Task1
                         Array.Sort(statesArray);
                         bool isFinal = false;
 
-                        if (statesArray.Length > 1) // если получили более 1 состояния (т.е. {...})
+                        if (statesArray.Length > 2 || (statesArray.Length == 2 && !statesArray.Contains("~"))) // если получили более 1 состояния (т.е. {...})
                         {
                             string result = "{";
                             foreach (string elem in statesArray)
                             {
-                                result += elem + ",";
-                                if (finalStates.Contains(elem))
-                                    isFinal = true;
+                                if (elem != "~")
+                                {
+                                    result += elem + ",";
+                                    if (finalStates.Contains(elem))
+                                        isFinal = true;
+                                }
                             }
 
                             result = result.TrimEnd(',') + "}";
@@ -754,6 +795,17 @@ namespace TFYIT_Task1
                     run = false;
                     break;
                 }
+
+                while (newStates[i] == "~")
+                {
+                    i++;
+                    if (i >= newStates.Count)
+                    {
+                        run = false;
+                        break;
+                    }
+                }
+
                 currentState = newStates[i];
             }
 
@@ -767,7 +819,8 @@ namespace TFYIT_Task1
             //    Console.WriteLine();
             //}
 
-            return new Automaton(1, newStates.ToArray(), inputs, newFinalStates.ToArray(), initState, newTransitions);
+            newStates.Remove("~");
+            return new Automaton(1, newStates.ToArray(), inputs, newFinalStates.Distinct().ToArray(), initState, newTransitions);
         }
         public Automaton knaEpsToKna()
         {

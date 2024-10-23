@@ -9,7 +9,7 @@ namespace TFYIT_Task1
     {
         static void Main(string[] args)
         {
-            string path = @"C:\Users\123\Documents\Универ\Теория формальных языков и трансляций\NKA-E.txt";
+            string path = @"C:\Users\123\Documents\Универ\Теория формальных языков и трансляций\NKA_2.txt";
             Automaton myAuto = new Automaton(path);
             myAuto.ShowInfo();
             Console.WriteLine();
@@ -23,8 +23,11 @@ namespace TFYIT_Task1
             if (myAuto.type == 2) // для случая недетерминированного автомата
             {
                 Automaton newAuto = myAuto.knaToKda();
-                newAuto.ShowInfo();
-                newAuto.ShowTable();
+                if (newAuto != null)
+                {
+                    newAuto.ShowInfo();
+                    newAuto.ShowTable();
+                }
             }
 
             if (myAuto.type == 3)
